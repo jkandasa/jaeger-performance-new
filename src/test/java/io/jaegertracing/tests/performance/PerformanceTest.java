@@ -1,35 +1,32 @@
-package io.jaegertracing.tests;
+package io.jaegertracing.tests.performance;
 
 import org.junit.Assert;
 import org.junit.Test;
 
+import io.jaegertracing.tests.TestSuite;
 import io.jaegertracing.tests.report.model.TimerModel;
-import io.jaegertracing.tests.report.model.JaegerTestReport;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-public class RunJaegerPerformanceTest {
+public class PerformanceTest extends TestSuite {
 
     private static final double MAX_ACCEPTED_DURATION = 1000 * 20; // 20 seconds
 
     @Test
     public void test01ReportStatus() {
-        JaegerTestReport report = PerformanceReportFactory.report();
         Assert.assertNotNull(report);
     }
 
     @Test
     public void test02SpansCount() {
-        JaegerTestReport report = PerformanceReportFactory.report();
-        int spansSent = (int) report.getSpansCountStatistics().get("sent");
-        int spansFound = (int) report.getSpansCountStatistics().get("found");
-        logger.debug("Spans[sent:{}, found:{}]", spansSent, spansFound);
+        Number spansSent = (Number) report.getSpansCountStatistics().get("sent");
+        Number spansFound = (Number) report.getSpansCountStatistics().get("found");
+        logger.debug("Spans[sent:{}, found:{}]", spansSent.longValue(), spansFound.longValue());
         Assert.assertEquals(spansSent, spansFound);
     }
 
     @Test
     public void test03QueryTime() {
-        JaegerTestReport report = PerformanceReportFactory.report();
         for (TimerModel timer : report.getMetric().getTimers()) {
             if (timer.getName().startsWith("FINAL")) {
                 double mean = (double) timer.getDuration().get("mean");

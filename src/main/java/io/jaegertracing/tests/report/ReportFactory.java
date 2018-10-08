@@ -5,14 +5,16 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
+import org.junit.runner.Result;
+
 import com.codahale.metrics.MetricAttribute;
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.Timer;
 
 import io.jaegertracing.client.Version;
-
 import io.jaegertracing.tests.JsonUtils;
 import io.jaegertracing.tests.model.TestConfig;
+import io.jaegertracing.tests.model.TestSuiteStatus;
 import io.jaegertracing.tests.report.model.JaegerTestReport;
 
 public class ReportFactory {
@@ -24,12 +26,17 @@ public class ReportFactory {
     private static long spanCountSent = -1;
     private static long spanCountFound = -1;
 
-    public static String getReport(TestConfig config) {
+    public static JaegerTestReport getFinalReport(TestConfig config) {
+        updateReport(config);
+        return TEST_REPORT;
+    }
+
+    public static String getFinalReportAsString(TestConfig config) {
         updateReport(config);
         return JsonUtils.asString(TEST_REPORT);
     }
 
-    public static void saveReport(TestConfig config, String filename) {
+    public static void saveFinalReport(TestConfig config, String filename) {
         updateReport(config);
         // save it in file
         JsonUtils.dumps(TEST_REPORT, filename);
@@ -98,4 +105,17 @@ public class ReportFactory {
         return spanCountFound;
     }
 
+    public static void updateTestSuiteStatus(String name, Result testResult) {
+        if (TEST_REPORT.getTestSuiteStatus() == null) {
+            TEST_REPORT.setTestSuiteStatus(new HashMap<>());
+        }
+        TEST_REPORT.getTestSuiteStatus().put(name, TestSuiteStatus.get(name, testResult));
+    }
+
+    public static TestSuiteStatus gettestSuiteStatus(String name) {
+        if (TEST_REPORT.getTestSuiteStatus() == null) {
+            TEST_REPORT.setTestSuiteStatus(new HashMap<>());
+        }
+        return TEST_REPORT.getTestSuiteStatus().get(name);
+    }
 }

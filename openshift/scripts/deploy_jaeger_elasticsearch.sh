@@ -11,7 +11,7 @@ OS_NAMESPACE=$1
 set -x
 
 # download config map from master branch
-cp templates/configmap-elasticsearch.yml configmap-elasticsearch.yml
+cp openshift/templates/configmap-elasticsearch.yml configmap-elasticsearch.yml
 # update configmap
 sed -i 's;${COLLECTOR_NUM_WORKERS};'${COLLECTOR_NUM_WORKERS}';g' configmap-elasticsearch.yml
 sed -i 's;${COLLECTOR_QUEUE_SIZE};'${COLLECTOR_QUEUE_SIZE}';g' configmap-elasticsearch.yml

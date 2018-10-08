@@ -26,12 +26,14 @@ public class ElasticsearchSpanCounter extends UntilNoChangeCounter {
                 new HttpHost(host, port, "http"))
                 .build();
     }
+
     static String getSpanIndex() {
         String formattedDate = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
         String spanIndex = "jaeger-span-" + formattedDate;
         logger.info("Using ElasticSearch index : [" + spanIndex + "]");
         return spanIndex;
     }
+
     private final String spanIndex;
 
     private final RestClient restClient;

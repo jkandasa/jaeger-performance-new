@@ -1,7 +1,7 @@
 set -x
 
 # download config map from master branch
-cp templates/performance-test-in-openshift.yml performance-test-in-openshift.yml
+cp openshift/templates/performance-test-in-openshift.yml performance-test-in-openshift.yml
 
 # update environment variables
 sed -i 's;${RUNNING_ON_OPENSHIFT};'${RUNNING_ON_OPENSHIFT}';g' performance-test-in-openshift.yml
@@ -38,9 +38,10 @@ sed -i 's;${ES_BULK_FLUSH_INTERVAL};'${ES_BULK_FLUSH_INTERVAL}';g' performance-t
 sed -i 's;${JAEGER_AGENT_IMAGE};'${JAEGER_AGENT_IMAGE}';g' performance-test-in-openshift.yml
 sed -i 's;${JAEGER_COLLECTOR_IMAGE};'${JAEGER_COLLECTOR_IMAGE}';g' performance-test-in-openshift.yml
 sed -i 's;${JAEGER_QUERY_IMAGE};'${JAEGER_QUERY_IMAGE}';g' performance-test-in-openshift.yml
-sed -i 's;${ES_IMAGE};'${ES_IMAGE}';g' performance-test-in-openshift.yml
-sed -i 's;${ES_IMAGE_INSECURE};'${ES_IMAGE_INSECURE}';g' performance-test-in-openshift.yml
+sed -i 's;${STORAGE_IMAGE};'${STORAGE_IMAGE}';g' performance-test-in-openshift.yml
+sed -i 's;${STORAGE_IMAGE_INSECURE};'${STORAGE_IMAGE_INSECURE}';g' performance-test-in-openshift.yml
 sed -i 's;${PERFORMANCE_TEST_IMAGE};'${PERFORMANCE_TEST_IMAGE}';g' performance-test-in-openshift.yml
+sed -i 's;${RUN_SMOKE_TEST};'${RUN_SMOKE_TEST}';g' performance-test-in-openshift.yml
 sed -i 's;${JAEGER_AGENT_QUEUE_SIZE};'${JAEGER_AGENT_QUEUE_SIZE}';g' performance-test-in-openshift.yml
 sed -i 's;${JAEGER_AGENT_WORKERS};'${JAEGER_AGENT_WORKERS}';g' performance-test-in-openshift.yml
 

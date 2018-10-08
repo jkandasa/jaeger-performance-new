@@ -1,20 +1,30 @@
 package io.jaegertracing.tests.model;
 
-import lombok.AllArgsConstructor;
-import lombok.NoArgsConstructor;
 import static io.jaegertracing.tests.TestUtils.getBooleanEnv;
 import static io.jaegertracing.tests.TestUtils.getFloatEnv;
 import static io.jaegertracing.tests.TestUtils.getIntegerEnv;
 import static io.jaegertracing.tests.TestUtils.getStringEnv;
+
+import java.io.IOException;
+
+import org.apache.commons.io.FileUtils;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 import lombok.ToString;
+import lombok.extern.slf4j.Slf4j;
 
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 @Data
 @ToString
+@Slf4j
 public class TestConfig {
 
     public static TestConfig loadFromEnvironment() {
@@ -22,15 +32,15 @@ public class TestConfig {
                 .builder()
                 .testDuration(getIntegerEnv("TEST_DURATION", "300"))
                 .tracersCount(getIntegerEnv("NUMBER_OF_TRACERS", "5"))
+                .spansCount(getIntegerEnv("NUMBER_OF_SPANS", "10"))
                 .runningOnOpenshift(getBooleanEnv("RUNNING_ON_OPENSHIFT", "false"))
                 .logsDirectory(getStringEnv("LOGS_DIRECTORY", "logs/"))
-                .spansCount(getIntegerEnv("NUMBER_OF_SPANS", "10"))
                 .queryLimit(getIntegerEnv("QUERY_LIMIT", "20000"))
-                .querySamples(getIntegerEnv("QUERY_SAMPLES", "20"))
-                .queryInterval(getIntegerEnv("QUERY_INTERVAL", "60"))
+                .querySamples(getIntegerEnv("QUERY_SAMPLES", "5"))
+                .queryInterval(getIntegerEnv("QUERY_INTERVAL", "-1"))
                 .sender(getStringEnv("SENDER", "http"))
                 .storageType(getStringEnv("STORAGE_TYPE", "elasticsearch"))
-                .spansCountFrom(getStringEnv("SPANS_COUNT_FROM", "storage"))
+                .spansCountFrom(getStringEnv("SPANS_COUNT_FROM", "jaeger-query"))
                 .storageHost(getStringEnv("STORAGE_HOST", "localhost"))
                 .storagePort(getIntegerEnv("STORAGE_PORT", "9200"))
                 .storageKeyspace(getStringEnv("STORAGE_KEYSPACE", "keyspace"))
@@ -55,20 +65,40 @@ public class TestConfig {
                 .imageAgent(getStringEnv("JAEGER_AGENT_IMAGE", "jaegertracing/jaeger-agent:latest"))
                 .imageCollector(getStringEnv("JAEGER_COLLECTOR_IMAGE", "jaegertracing/jaeger-collector:latest"))
                 .imageQuery(getStringEnv("JAEGER_QUERY_IMAGE", "jaegertracing/jaeger-query:latest"))
-                .imageElasticsearch(getStringEnv("ES_IMAGE", "registry.centos.org/rhsyseng/elasticsearch:5.5.2"))
-                .esImageInSecure(getBooleanEnv("ES_IMAGE_INSECURE", "false"))
+                .imageStorage(getStringEnv("STORAGE_IMAGE", "registry.centos.org/rhsyseng/elasticsearch:5.5.2"))
+                .storageImageInSecure(getBooleanEnv("STORAGE_IMAGE_INSECURE", "false"))
                 .imagePerformanceTest(
                         getStringEnv("PERFORMANCE_TEST_IMAGE", "jkandasa/jaeger-performance-test:latest"))
+                .runSmokeTest(getBooleanEnv("RUN_SMOKE_TEST", "true"))
+                .jaegerAgentQueueSize(getIntegerEnv("JAEGER_AGENT_QUEUE_SIZE", "1000"))
+                .jaegerAgentWorkers(getIntegerEnv("JAEGER_AGENT_WORKERS", "10"))
                 .build();
+    }
+
+    public static TestConfig get() {
+        String testConfigFile = System.getProperty("TEST_CONFIG_FILE");
+        if (testConfigFile == null) {
+            testConfigFile = getStringEnv("TEST_CONFIG_FILE", "environment");
+        }
+        if (!testConfigFile.equalsIgnoreCase("environment")) {
+            ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
+            try {
+                return mapper.readValue(FileUtils.getFile(testConfigFile), TestConfig.class);
+            } catch (IOException ex) {
+                logger.error("Exception,", ex);
+            }
+        }
+        return loadFromEnvironment();
     }
 
     // general data
     private Integer testDuration; // in seconds
     private Integer tracersCount;
+    private Integer spansCount;
+
     private Boolean runningOnOpenshift;
     private String logsDirectory;
 
-    private Integer spansCount;
     // HTTP GET details
     private Integer queryLimit;
     private Integer querySamples;
@@ -115,16 +145,20 @@ public class TestConfig {
     private Integer esBulkWorkers;
     private String esBulkFlushInterval;
 
-    private Boolean esImageInSecure;
     // images
     private String imageAgent;
     private String imageCollector;
     private String imageQuery;
 
-    private String imageElasticsearch;
+    private String imageStorage;
+    private Boolean storageImageInSecure;
 
     private String imagePerformanceTest;
+    private Boolean runSmokeTest;
 
     private String jaegerClientVersion;
+
+    private Integer jaegerAgentQueueSize;
+    private Integer jaegerAgentWorkers;
 
 }

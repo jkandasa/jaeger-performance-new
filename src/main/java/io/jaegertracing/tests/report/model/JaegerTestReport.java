@@ -2,12 +2,12 @@ package io.jaegertracing.tests.report.model;
 
 import java.util.Map;
 
-import lombok.AllArgsConstructor;
-
-import lombok.NoArgsConstructor;
 import io.jaegertracing.tests.model.TestConfig;
+import io.jaegertracing.tests.model.TestSuiteStatus;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 import lombok.ToString;
 
 @Builder
@@ -19,4 +19,5 @@ public class JaegerTestReport {
     private TestConfig config;
     private MetricReport metric;
     private Map<String, Object> spansCountStatistics;
+    private Map<String, TestSuiteStatus> testSuiteStatus;
 }

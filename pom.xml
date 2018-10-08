@@ -26,6 +26,7 @@
     <version.projectlombok>1.18.2</version.projectlombok>
     <version.slf4j>1.7.25</version.slf4j>
     <version.junit>4.12</version.junit>
+    <version.htmlunit>2.31</version.htmlunit>    
 
     <version.maven-assembly-plugin>3.1.0</version.maven-assembly-plugin>
     <version.maven-failsafe-plugin>2.22.0</version.maven-failsafe-plugin>
@@ -60,6 +61,13 @@
     <dependency>
       <groupId>com.fasterxml.jackson.core</groupId>
       <artifactId>jackson-databind</artifactId>
+      <version>${version.jackson}</version>
+    </dependency>
+
+
+    <dependency>
+      <groupId>com.fasterxml.jackson.dataformat</groupId>
+      <artifactId>jackson-dataformat-yaml</artifactId>
       <version>${version.jackson}</version>
     </dependency>
 
@@ -112,7 +120,12 @@
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>
       <version>${version.junit}</version>
-      <scope>test</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>net.sourceforge.htmlunit</groupId>
+      <artifactId>htmlunit</artifactId>
+      <version>${version.htmlunit}</version>
     </dependency>
 
   </dependencies>

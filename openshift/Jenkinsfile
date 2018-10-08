@@ -64,14 +64,14 @@ pipeline {
         string(name: 'ES_BULK_FLUSH_INTERVAL', defaultValue: '200ms', description: '--es.bulk.flush-interval')
 
 
-        string(name: 'ES_IMAGE', defaultValue: 'registry.centos.org/rhsyseng/elasticsearch:5.6.10', description: 'ElasticSearch image.')
-        booleanParam(name: 'ES_IMAGE_INSECURE', defaultValue: false, description: 'If image location not-secured(HTTP), check this box')
+        string(name: 'STORAGE_IMAGE', defaultValue: 'registry.centos.org/rhsyseng/elasticsearch:5.6.10', description: 'Storage image, can be ElasticSearch or cassandra.')
+        booleanParam(name: 'STORAGE_IMAGE_INSECURE', defaultValue: false, description: 'If image location not-secured(HTTP), check this box')
         string(name: 'JAEGER_AGENT_IMAGE', defaultValue: 'jaegertracing/jaeger-agent:latest', description: 'Jaeger agent Image')
         string(name: 'JAEGER_COLLECTOR_IMAGE', defaultValue: 'jaegertracing/jaeger-collector:latest', description: 'Jaeger collector image')
         string(name: 'JAEGER_QUERY_IMAGE', defaultValue: 'jaegertracing/jaeger-query:latest', description: 'Jaeger query image')
-        string(name: 'PERFORMANCE_TEST_IMAGE', defaultValue: 'jkandasa/jaeger-performance-test:latest', description: 'Jaeger performance test docker image')
+        string(name: 'PERFORMANCE_TEST_IMAGE', defaultValue: 'jkandasa/jaeger-performance-test:1.0.0', description: 'Jaeger performance test docker image')
 
-        booleanParam(name: 'RUN_SMOKE_TESTS', defaultValue: false, description: 'Run smoke tests in addition to the performance tests')
+        booleanParam(name: 'RUN_SMOKE_TEST', defaultValue: false, description: 'Run smoke tests in addition to the performance tests')
         booleanParam(name: 'DELETE_JAEGER_AT_END', defaultValue: true, description: 'Delete Jaeger instance at end of the test')
         booleanParam(name: 'DELETE_JOB_AT_END', defaultValue: true, description: 'Delete test pods at end of the test')      
     }
@@ -86,7 +86,7 @@ pipeline {
         stage('Mandatory fields check and login') {
             steps {
                 sh '''
-                    ./scripts/oc_login.sh
+                    ./openshift/scripts/oc_login.sh
                 '''
             }
         }
@@ -128,7 +128,7 @@ pipeline {
                 expression { params.STORAGE_TYPE == 'elasticsearch' && params.INSTALL_JAEGER_SERVICES }
             }
             steps {
-                sh ' ./scripts/execute-es-cluster-deployment.sh ${OS_NAMESPACE}'
+                sh ' ./openshift/scripts/execute-es-cluster-deployment.sh ${OS_NAMESPACE}'
             }
         }
         stage('deploy Jaeger with Cassandra') {
@@ -143,7 +143,7 @@ pipeline {
                     sed -i 's/jaegertracing\\/jaeger-collector:${IMAGE_VERSION}/'${JAEGER_COLLECTOR_IMAGE}'/g' jaeger-production-template.yml
                     sed -i 's/jaegertracing\\/jaeger-query:${IMAGE_VERSION}/'${JAEGER_QUERY_IMAGE}'/g' jaeger-production-template.yml
                     grep "image:" jaeger-production-template.yml
-                    ./scripts/updateTemplateForCassandra.sh ${OS_NAMESPACE}
+                    ./openshift/scripts/updateTemplateForCassandra.sh ${OS_NAMESPACE}
                     oc process  ${DEPLOYMENT_PARAMETERS} -f jaeger-production-template.yml  | oc create -n ${PROJECT_NAME} -f -
                 '''
             }
@@ -153,7 +153,7 @@ pipeline {
                 expression { params.STORAGE_TYPE == 'elasticsearch' && params.INSTALL_JAEGER_SERVICES }
             }
             steps {
-                sh './scripts/deploy_jaeger_elasticsearch.sh ${OS_NAMESPACE}'
+                sh './openshift/scripts/deploy_jaeger_elasticsearch.sh ${OS_NAMESPACE}'
             }
         }
         stage('Wait for Jaeger Deployment') {
@@ -163,8 +163,8 @@ pipeline {
             steps {
                 sh  '''
                     # NAMESPACE SERVICE_NAME MAX_WAIT_TIME
-                    ./scripts/wait_for_service.sh ${OS_NAMESPACE} jaeger-query 60
-                    ./scripts/wait_for_service.sh ${OS_NAMESPACE} jaeger-collector 60
+                    ./openshift/scripts/wait_for_service.sh ${OS_NAMESPACE} jaeger-query 60
+                    ./openshift/scripts/wait_for_service.sh ${OS_NAMESPACE} jaeger-collector 60
                 '''
             }
         }
@@ -173,14 +173,14 @@ pipeline {
                 sh '''
                     # logs will be stored in this location
                     export LOGS_DIRECTORY=$PWD/logs
-                    ./scripts/run_performance_test.sh
+                    ./openshift/scripts/run_performance_test.sh
                     sleep 30  # wait for 30 seconds to create container
                     # wait_for_pods_status.sh NAMESPACE POD_FILTER WAIT_FOR_STATUS MAX_WAIT_TIME
                     # add extra 5 minutes on maximum wait time
-                    ./scripts/wait_for_pods_status.sh ${OS_NAMESPACE} "app=jaeger-performance-test-job" "Running" `expr ${TEST_DURATION} + 300`
+                    ./openshift/scripts/wait_for_pods_status.sh ${OS_NAMESPACE} "app=jaeger-performance-test-job" "Running" `expr ${TEST_DURATION} + 300`
                     # copy log files
-                    ./scripts/copy-log-file.sh  ${OS_NAMESPACE} "app=jaeger-performance-test-job" "jaeger-performance-test"
-                    ./scripts/copy-log-file.sh  ${OS_NAMESPACE} "app=jaeger-performance-test-job" "jaeger-agent"
+                    ./openshift/scripts/copy-log-file.sh  ${OS_NAMESPACE} "app=jaeger-performance-test-job" "jaeger-performance-test"
+                    ./openshift/scripts/copy-log-file.sh  ${OS_NAMESPACE} "app=jaeger-performance-test-job" "jaeger-agent"
                     ls -lh logs/
                     mvn clean test
                 '''
@@ -189,7 +189,7 @@ pipeline {
         stage('Collect logs'){
             steps{
                 sh '''
-                  ./scripts/collect_logs.sh ${OS_NAMESPACE}
+                  ./openshift/scripts/collect_logs.sh ${OS_NAMESPACE}
                   export LOGS_COLLECTED="true"
                   '''
             }
@@ -220,7 +220,7 @@ pipeline {
         always {
             script {
                 if (env.LOGS_COLLECTED == 'false') {
-                  sh './scripts/collect_logs.sh ${OS_NAMESPACE}'
+                  sh './openshift/scripts/collect_logs.sh ${OS_NAMESPACE}'
                 }
             }
             archiveArtifacts artifacts: 'logs/*.*'

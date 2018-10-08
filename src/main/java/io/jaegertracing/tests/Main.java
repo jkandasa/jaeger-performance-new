@@ -12,6 +12,9 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
+import org.junit.runner.JUnitCore;
+import org.junit.runner.Result;
+
 import com.codahale.metrics.Timer;
 
 import io.jaegertracing.internal.JaegerTracer;
@@ -20,6 +23,7 @@ import io.jaegertracing.internal.samplers.ConstSampler;
 import io.jaegertracing.spi.Sender;
 import io.jaegertracing.tests.model.TestConfig;
 import io.jaegertracing.tests.report.ReportFactory;
+import io.jaegertracing.tests.smoke.TestSuiteSmoke;
 import io.jaegertracing.thrift.internal.senders.HttpSender;
 import io.jaegertracing.thrift.internal.senders.UdpSender;
 import io.opentracing.tag.Tags;
@@ -52,15 +56,15 @@ public class Main {
 
     public static void main(String[] args) throws Exception {
         Main instance = new Main();
-        instance.triggerCreateSpans();
+        instance.execute();
     }
 
     TestConfig config;
 
     private final int expectedSpansCount;
 
-    private Main() {
-        config = TestConfig.loadFromEnvironment();
+    public Main() {
+        config = TestConfig.get();
         // custom
         //config.setTestDuration(60 * 3);
         //config.setTracersCount(6);
@@ -82,6 +86,36 @@ public class Main {
         }
 
         expectedSpansCount = config.getTracersCount() * config.getSpansCount() * config.getTestDuration();
+    }
+
+    public void execute() throws Exception {
+        triggerCreateSpans();
+        executeSmokeTests();
+
+        logger.info("[DROP_COUNT={}]", ReportFactory.getDroupCount());
+        logger.info("[DROP_PERCENTAGE={}]", ReportFactory.getDroupPercentage());
+        logger.info("[SPANS_SENT={}]", ReportFactory.getSpansSent());
+        logger.info("[SPANE_FOUND={}]", ReportFactory.getSpansFound());
+        if (ReportFactory.getDroupCount() > 0) {
+            logger.info("[TEST_STATUS=PASSED]", ReportFactory.getSpansFound());
+        } else {
+            logger.error("[TEST_STATUS=FAILED]", ReportFactory.getSpansFound());
+        }
+        logger.info("Final Report as json:\n@@START@@\n{}\n@@END@@", ReportFactory.getFinalReportAsString(config));
+        ReportFactory.saveFinalReport(config, "/tmp/performance_report.json");
+    }
+
+    private void executeSmokeTests() {
+        // execute smoke tests, if enabled
+        if (config.getRunSmokeTest()) {
+            logger.info("Execute Smoke tests enabled. Triggering smoke tests");
+            JUnitCore jUnitCore = new JUnitCore();
+            Result testResult = jUnitCore.run(TestSuiteSmoke.class);
+            ReportFactory.updateTestSuiteStatus(TestSuiteSmoke.SUITE_NAME, testResult);
+            logger.info("Smoke test status:{}", ReportFactory.gettestSuiteStatus(TestSuiteSmoke.SUITE_NAME));
+        } else {
+            logger.info("Execute Smoke tests disabled.");
+        }
     }
 
     private JaegerTracer createJaegerTracer(String serviceName) {
@@ -129,7 +163,7 @@ public class Main {
         return spanCounter;
     }
 
-    public void triggerCreateSpans() throws Exception {
+    private void triggerCreateSpans() throws Exception {
         logger.debug("{}", config);
         Timer reportingTimer = ReportFactory.timer("report-spans");
         long startTime = System.currentTimeMillis();
@@ -182,18 +216,6 @@ public class Main {
             esStatsGetter.printStats();
             esStatsGetter.close();
         }
-        logger.info("[DROP_COUNT={}]", ReportFactory.getDroupCount());
-        logger.info("[DROP_PERCENTAGE={}]", ReportFactory.getDroupPercentage());
-        logger.info("[SPANS_SENT={}]", ReportFactory.getSpansSent());
-        logger.info("[SPANE_FOUND={}]", ReportFactory.getSpansFound());
-        if (ReportFactory.getDroupCount() > 0) {
-            logger.info("[TEST_STATUS=PASSED]", ReportFactory.getSpansFound());
-        } else {
-            logger.error("[TEST_STATUS=FAILED]", ReportFactory.getSpansFound());
-        }
-        logger.info("Final Report as json:\n@@START@@\n{}\n@@END@@", ReportFactory.getReport(config));
-        ReportFactory.saveReport(config, "/tmp/performance_report.json");
-
         spanCounter.close();
         jaegerQuery.close();
     }

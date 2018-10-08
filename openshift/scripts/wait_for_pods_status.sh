@@ -31,12 +31,12 @@ do
   for _pod in ${PODS}
   do
     _status=(${_pod//=/ })
-    if [ ${_status[1]} == ${WAIT_FOR_STATUS} ]; then
+    if [ ${_status[1]} == ${WAIT_FOR_STATUS} ] || [ ${_status[1]} == 'ContainerCreating' ]; then
       FINAL_STATUS=${_status[1]}
     fi
   done
-  if [ ${FINAL_STATUS} != ${WAIT_FOR_STATUS} ];then
-    echo "INFO: There is no pods in '${WAIT_FOR_STATUS}' state."
+  if [ ${FINAL_STATUS} != ${WAIT_FOR_STATUS} ] && [ ${FINAL_STATUS} != 'ContainerCreating' ];then
+    echo "INFO: There is no pods in '${WAIT_FOR_STATUS}' or 'ContainerCreating' state."
     echo "INFO: Overall time taken: `expr $(date +%s) - ${TIMESTAMP_START}` seconds, Number of pod(s): ${NUMBER_OF_PODS}" 
     break
   else

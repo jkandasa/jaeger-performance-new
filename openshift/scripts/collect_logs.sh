@@ -13,7 +13,7 @@ OS_NAMESPACE=$1
 # copy log files
 
 # collect elasticsearch logs
-./scripts/copy-log-file.sh  ${OS_NAMESPACE} "app=elasticsearch"
+./openshift/scripts/copy-log-file.sh  ${OS_NAMESPACE} "app=elasticsearch"
 
 # collect jaeger services logs
 PODS=`oc get pods -n ${OS_NAMESPACE} --no-headers -l app=jaeger | awk '{print $1}'`
