@@ -22,8 +22,8 @@ PODS_LIST=$(echo ${PODS} | tr " " "\n")
 for _pod in ${PODS_LIST}; do
   echo "INFO: Copying log file from ${_pod}"
   if [[ ${_pod} = *"query"* ]]; then
-    oc logs ${_pod} -c "jaeger-query" -n ${OS_NAMESPACE} > logs/${OS_NAMESPACE}_jaeger-query_${_pod}.log
-    oc logs ${_pod} -c "jaeger-agent" -n ${OS_NAMESPACE} > logs/${OS_NAMESPACE}_jaeger-agent_${_pod}.log
+    oc logs ${_pod} -c "jaeger-query" -n ${OS_NAMESPACE} > logs/${OS_NAMESPACE}_${_pod}_jaeger-query.log
+    oc logs ${_pod} -c "jaeger-agent" -n ${OS_NAMESPACE} > logs/${OS_NAMESPACE}_${_pod}_jaeger-agent.log
   else
     oc logs ${_pod} -n ${OS_NAMESPACE} > logs/${OS_NAMESPACE}_${_pod}.log
   fi

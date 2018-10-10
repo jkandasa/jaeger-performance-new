@@ -1,9 +1,5 @@
 pipeline {
-    agent any
-    tools {
-        maven 'M3'
-        jdk 'JDK8'
-    }
+     agent { label 'maven-slave' }
     options {
         disableConcurrentBuilds()
         /*timeout(time: 8, unit: 'HOURS')*/
@@ -22,10 +18,11 @@ pipeline {
         string(name: 'OS_NAMESPACE', defaultValue: 'jaeger-test2', description: 'Openshift namespace')
         booleanParam(name: 'INSTALL_JAEGER_SERVICES', defaultValue: true, description: 'Install Jaeger services')
 
-        string(name: 'TEST_DURATION', defaultValue: '300', description: 'Test duration in seconds')
-        string(name: 'NUMBER_OF_TRACERS', defaultValue: '10', description: 'Number of tracers')
-        string(name: 'NUMBER_OF_SPANS', defaultValue: '80', description: 'Number of spans per tracer')
-        string(name: 'QUERY_LIMIT', defaultValue: '3000', description: 'Maximum items limit on query execution')
+        choice(choices: 'performance,smoke\nperformance\nsmoke',  name: 'TESTS_TO_RUN', description: 'Tests to run')
+        string(name: 'PERFORMANCE_TEST_DATA', defaultValue: 'quick,165', description: 'Performance test data[type,data]: type can be:"quick" or "long", for "quick": delay in miliseconds, for "long": duration in seconds')
+        string(name: 'NUMBER_OF_TRACERS', defaultValue: '100', description: 'Number of tracers')
+        string(name: 'NUMBER_OF_SPANS', defaultValue: '4000', description: 'Number of spans per tracer')
+        string(name: 'QUERY_LIMIT', defaultValue: '20000', description: 'Maximum items limit on query execution')
         string(name: 'QUERY_SAMPLES', defaultValue: '5', description: 'Number of times the same should be executed')
         string(name: 'QUERY_INTERVAL', defaultValue: '-1', description: 'Query sets will be executed in this interval. If you want to only once at the end, pass it as -1')
 
@@ -48,9 +45,7 @@ pipeline {
         
         string(name: 'JAEGER_FLUSH_INTERVAL', defaultValue: '200', description: 'Jaeger java client library flush interval')
         string(name: 'JAEGER_MAX_POCKET_SIZE', defaultValue: '0', description: 'Jaeger java client library max pocket size')
-        string(name: 'JAEGER_SAMPLING_RATE', defaultValue: '1.0', description: '0.0 to 1.0 percent of spans to record')
         string(name: 'JAEGER_MAX_QUEUE_SIZE', defaultValue: '10000', description: 'Jaeger java client library max queue size')
-
 
         string(name: 'COLLECTOR_PODS', defaultValue: '1', description: 'The number of collector pods')
         string(name: 'COLLECTOR_QUEUE_SIZE', defaultValue: '2000', description: '--collector.queue-size')
@@ -63,7 +58,6 @@ pipeline {
         string(name: 'ES_BULK_WORKERS', defaultValue: '1', description: '--es.bulk.workers')
         string(name: 'ES_BULK_FLUSH_INTERVAL', defaultValue: '200ms', description: '--es.bulk.flush-interval')
 
-
         string(name: 'STORAGE_IMAGE', defaultValue: 'registry.centos.org/rhsyseng/elasticsearch:5.6.10', description: 'Storage image, can be ElasticSearch or cassandra.')
         booleanParam(name: 'STORAGE_IMAGE_INSECURE', defaultValue: false, description: 'If image location not-secured(HTTP), check this box')
         string(name: 'JAEGER_AGENT_IMAGE', defaultValue: 'jaegertracing/jaeger-agent:latest', description: 'Jaeger agent Image')
@@ -71,7 +65,6 @@ pipeline {
         string(name: 'JAEGER_QUERY_IMAGE', defaultValue: 'jaegertracing/jaeger-query:latest', description: 'Jaeger query image')
         string(name: 'PERFORMANCE_TEST_IMAGE', defaultValue: 'jkandasa/jaeger-performance-test:1.0.0', description: 'Jaeger performance test docker image')
 
-        booleanParam(name: 'RUN_SMOKE_TEST', defaultValue: false, description: 'Run smoke tests in addition to the performance tests')
         booleanParam(name: 'DELETE_JAEGER_AT_END', defaultValue: true, description: 'Delete Jaeger instance at end of the test')
         booleanParam(name: 'DELETE_JOB_AT_END', defaultValue: true, description: 'Delete test pods at end of the test')      
     }
@@ -177,7 +170,15 @@ pipeline {
                     sleep 30  # wait for 30 seconds to create container
                     # wait_for_pods_status.sh NAMESPACE POD_FILTER WAIT_FOR_STATUS MAX_WAIT_TIME
                     # add extra 5 minutes on maximum wait time
-                    ./openshift/scripts/wait_for_pods_status.sh ${OS_NAMESPACE} "app=jaeger-performance-test-job" "Running" `expr ${TEST_DURATION} + 300`
+                    # get test type and duration
+                    _TEST_DATA=(${PERFORMANCE_TEST_DATA//,/ })
+                    if [ ${_TEST_DATA[0]} == 'long' ];then
+                        _TEST_DURATION=${_TEST_DATA[1]}
+                    else
+                        # if it is a qucik run define duration as 20 minutes maximum
+                        _TEST_DURATION=1200
+                    fi
+                    ./openshift/scripts/wait_for_pods_status.sh ${OS_NAMESPACE} "app=jaeger-performance-test-job" "Running" `expr ${_TEST_DURATION} + 300`
                     # copy log files
                     ./openshift/scripts/copy-log-file.sh  ${OS_NAMESPACE} "app=jaeger-performance-test-job" "jaeger-performance-test"
                     ./openshift/scripts/copy-log-file.sh  ${OS_NAMESPACE} "app=jaeger-performance-test-job" "jaeger-agent"

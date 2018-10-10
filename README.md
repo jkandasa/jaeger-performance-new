@@ -20,18 +20,20 @@ This is the easy way to running the test. We can keep all our test configuration
 Sample yaml file is [available here](/test_config.yaml)
 
 ```yaml
-# test duration in seconds
-testDuration: 60
+# what are all the tests need to be executed
+testsToRun: 'performance,smoke'
+
+# performance test data, two type of performance test can be executed
+# data format: [type,data]
+# 1. quick run example, 'quick,50', data: delay between spans in milliseconds
+# 2. long run example, 'long,600', data: test duration in seconds
+performanceTestData: 'quick,10'
 
 # tracers count, number of tracers should send spans
-tracersCount: 5
+tracersCount: 10
 
 # spans count for per tracer.
-spansCount: 10
-
-# Is your test is running on OpenShift environment?
-# if you run your test on OpenShift environment, you should use Jenkins
-runningOnOpenshift: false
+spansCount: 50000
 
 # maximum spans/data limit on Jaeger query test
 queryLimit: 20000
@@ -80,11 +82,7 @@ jaegerAgentPort: 6831
 # jaeger client java library configurations
 jaegerFlushInterval: 100
 jaegerMaxPocketSize: 0
-jaegerSamplingRate: 1.0
 jaegerMaxQueueSize: 10000
-
-# do you want to execute the smoke test?
-runSmokeTest: true
 ```
 
 Running test
@@ -102,10 +100,13 @@ mvn clean test
 #### Run test by Setting environment variables
 Here environment variables are listed with default values on `[]`
 
-* `TEST_DURATION` [300] - test duration in seconds
+* `TESTS_TO_RUN` ["performance,smoke"] - what are all the tests need to be executed
+* `PERFORMANCE_TEST_DATA` ["quick,10"] - performance test data, two type of performance test can be executed. data format: [type,data]
+
+    1. quick run example, 'quick,10', data: delay between spans in milliseconds
+    2. long run example, 'long,600', data: test duration in seconds
 * `NUMBER_OF_TRACERS` [5] - Number of tracers should be created
 * `NUMBER_OF_SPANS` [10] - Number of spans per tracer. *Spans per second = NUMBER_OF_TRACERS * NUMBER_OF_SPANS*
-* `RUNNING_ON_OPENSHIFT` [false] - Is the test running on OpenShift environment?
 * `QUERY_LIMIT` [20000] - maximum records limit, when run query test
 * `QUERY_SAMPLES` [5] - number of times the same query should be repeated (we will get average query execution time)
 * `QUERY_INTERVAL` [-1] - if you want to run query tests on multiple intervals, specify the values in seconds. `-1` indicates run only at the end of the test
@@ -123,9 +124,7 @@ Here environment variables are listed with default values on `[]`
 * `JAEGER_AGENT_PORT` [6831] - jaeger agent service port number
 * `JAEGER_FLUSH_INTERVAL` [100] - flush interval will be used in jaeger java client library
 * `JAEGER_MAX_POCKET_SIZE` [0] - maximum udp pocket size used in jaeger client library(when `SENDER` == `udp`)
-* `JAEGER_SAMPLING_RATE` [1.0] - sampling rate will be used in client library
 * `JAEGER_MAX_QUEUE_SIZE` [10000] - queue size in jaeger java client library
-* `RUN_SMOKE_TEST` [true] - run smoke test along with this performance test
 
 Some of the environment variables not listed here, which is used to setup storage and jaeger services on OpenShift environment via Jenkins.
 

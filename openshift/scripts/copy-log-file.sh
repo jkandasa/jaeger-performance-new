@@ -25,7 +25,7 @@ echo "INFO: Pods list: ${PODS}"
 for _pod in ${PODS_LIST}; do
   echo "INFO: Copying log file from ${_pod}"
   if [ -n "$CONTAINER_NAME" ]; then
-    oc logs ${_pod} -c ${CONTAINER_NAME} -n ${OS_NAMESPACE} > logs/${OS_NAMESPACE}_${CONTAINER_NAME}_${_pod}.log
+    oc logs ${_pod} -c ${CONTAINER_NAME} -n ${OS_NAMESPACE} > logs/${OS_NAMESPACE}_${_pod}_${CONTAINER_NAME}.log
   else
     oc logs ${_pod} -n ${OS_NAMESPACE} > logs/${OS_NAMESPACE}_${_pod}.log
   fi

@@ -1,7 +1,6 @@
 package io.jaegertracing.tests.model;
 
 import static io.jaegertracing.tests.TestUtils.getBooleanEnv;
-import static io.jaegertracing.tests.TestUtils.getFloatEnv;
 import static io.jaegertracing.tests.TestUtils.getIntegerEnv;
 import static io.jaegertracing.tests.TestUtils.getStringEnv;
 
@@ -30,9 +29,10 @@ public class TestConfig {
     public static TestConfig loadFromEnvironment() {
         return TestConfig
                 .builder()
-                .testDuration(getIntegerEnv("TEST_DURATION", "300"))
-                .tracersCount(getIntegerEnv("NUMBER_OF_TRACERS", "5"))
-                .spansCount(getIntegerEnv("NUMBER_OF_SPANS", "10"))
+                .testsToRun(getStringEnv("TESTS_TO_RUN", "performance,smoke"))
+                .performanceTestData(getStringEnv("PERFORMANCE_TEST_DATA", "quick,50"))
+                .tracersCount(getIntegerEnv("NUMBER_OF_TRACERS", "50"))
+                .spansCount(getIntegerEnv("NUMBER_OF_SPANS", "10000"))
                 .runningOnOpenshift(getBooleanEnv("RUNNING_ON_OPENSHIFT", "false"))
                 .logsDirectory(getStringEnv("LOGS_DIRECTORY", "logs/"))
                 .queryLimit(getIntegerEnv("QUERY_LIMIT", "20000"))
@@ -52,7 +52,6 @@ public class TestConfig {
                 .jaegerAgentPort(getIntegerEnv("JAEGER_AGENT_PORT", "6831"))
                 .jaegerFlushInterval(getIntegerEnv("JAEGER_FLUSH_INTERVAL", "100"))
                 .jaegerMaxPocketSize(getIntegerEnv("JAEGER_MAX_POCKET_SIZE", "0"))
-                .jaegerSamplingRate(getFloatEnv("JAEGER_SAMPLING_RATE", "1.0"))
                 .jaegerMaxQueueSize(getIntegerEnv("JAEGER_MAX_QUEUE_SIZE", "10000"))
                 .collectorPods(getIntegerEnv("COLLECTOR_PODS", "1"))
                 .collectorQueueSize(getIntegerEnv("COLLECTOR_QUEUE_SIZE", "2000"))
@@ -69,7 +68,6 @@ public class TestConfig {
                 .storageImageInSecure(getBooleanEnv("STORAGE_IMAGE_INSECURE", "false"))
                 .imagePerformanceTest(
                         getStringEnv("PERFORMANCE_TEST_IMAGE", "jkandasa/jaeger-performance-test:latest"))
-                .runSmokeTest(getBooleanEnv("RUN_SMOKE_TEST", "true"))
                 .jaegerAgentQueueSize(getIntegerEnv("JAEGER_AGENT_QUEUE_SIZE", "1000"))
                 .jaegerAgentWorkers(getIntegerEnv("JAEGER_AGENT_WORKERS", "10"))
                 .build();
@@ -83,7 +81,11 @@ public class TestConfig {
         if (!testConfigFile.equalsIgnoreCase("environment")) {
             ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
             try {
-                return mapper.readValue(FileUtils.getFile(testConfigFile), TestConfig.class);
+                TestConfig config = mapper.readValue(FileUtils.getFile(testConfigFile), TestConfig.class);
+                // update defaults
+                config.setRunningOnOpenshift(false);
+
+                return config;
             } catch (IOException ex) {
                 logger.error("Exception,", ex);
             }
@@ -92,7 +94,8 @@ public class TestConfig {
     }
 
     // general data
-    private Integer testDuration; // in seconds
+    private String testsToRun;
+    private String performanceTestData;
     private Integer tracersCount;
     private Integer spansCount;
 
@@ -128,7 +131,6 @@ public class TestConfig {
 
     private Integer jaegerFlushInterval;
     private Integer jaegerMaxPocketSize;
-    private Float jaegerSamplingRate;
 
     private Integer jaegerMaxQueueSize;
     // collector pod details
@@ -154,11 +156,66 @@ public class TestConfig {
     private Boolean storageImageInSecure;
 
     private String imagePerformanceTest;
-    private Boolean runSmokeTest;
 
     private String jaegerClientVersion;
 
     private Integer jaegerAgentQueueSize;
     private Integer jaegerAgentWorkers;
 
+    public Float getJaegerSamplingRate() {
+        return 1.0F;
+    }
+
+    public boolean isPerformanceTestEnabled() {
+        if (testsToRun.contains("performance")) {
+            return true;
+        }
+        return false;
+    }
+
+    public boolean isSmokeTestEnabled() {
+        if (testsToRun.contains("smoke")) {
+            return true;
+        }
+        return false;
+    }
+
+    public boolean isPerformanceTestQuickRunEnabled() {
+        if (performanceTestData.toLowerCase().startsWith("quick")) {
+            return true;
+        }
+        return false;
+    }
+
+    public boolean isPerformanceTestLongRunEnabled() {
+        return !isPerformanceTestQuickRunEnabled();
+    }
+
+    private Long getPerformanceTestSpanDelayOrDuration() {
+        String[] data = performanceTestData.split(",");
+        try {
+            if (data.length == 2) {
+                return Long.valueOf(data[1].trim());
+            } else {
+                throw new RuntimeException("Invalid performancte test data: " + performanceTestData);
+            }
+        } catch (Exception ex) {
+            logger.error("Exception,", ex);
+            throw new RuntimeException("Exception:" + ex.getMessage());
+        }
+    }
+
+    public Long getPerformanceTestSpanDelay() {
+        if (isPerformanceTestLongRunEnabled()) {
+            return -1L;
+        }
+        return getPerformanceTestSpanDelayOrDuration();
+    }
+
+    public Integer getPerformanceTestDuration() {
+        if (isPerformanceTestQuickRunEnabled()) {
+            return -1;
+        }
+        return getPerformanceTestSpanDelayOrDuration().intValue();
+    }
 }

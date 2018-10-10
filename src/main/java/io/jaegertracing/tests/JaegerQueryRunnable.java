@@ -64,7 +64,7 @@ public class JaegerQueryRunnable implements Closeable, Runnable {
                 .build();
 
         if (config.getQueryInterval() != -1) {
-            int finalExecution = config.getTestDuration() - config.getQueryInterval() - 5;
+            int finalExecution = config.getPerformanceTestDuration() - config.getQueryInterval() - 5;
             numberOfExecution = finalExecution / config.getQueryInterval();
         } else {
             numberOfExecution = 0;
@@ -114,11 +114,11 @@ public class JaegerQueryRunnable implements Closeable, Runnable {
         for (int sample = 0; sample < config.getQuerySamples(); sample++) {
             start = System.currentTimeMillis();
             executeQueries(prefix);
-            logger.debug("QueryRun prefix:{}, sample:{}, timeTaken:{}ms",
-                    prefix, sample, System.currentTimeMillis() - start);
+            logger.debug("QueryRun prefix:{}, sample:{}, timeTaken:{}",
+                    prefix, sample, TestUtils.timeTaken(System.currentTimeMillis() - start));
         }
-        logger.debug("Overall time taken for the prefix:{}, samples:{}, timeTaken:{}ms",
-                prefix, config.getQuerySamples(), System.currentTimeMillis() - startOverAll);
+        logger.debug("Overall time taken for the prefix:{}, samples:{}, timeTaken:{}",
+                prefix, config.getQuerySamples(), TestUtils.timeTaken(System.currentTimeMillis() - startOverAll));
     }
 
     private void executeQueries(String prefix) {
@@ -139,7 +139,7 @@ public class JaegerQueryRunnable implements Closeable, Runnable {
                 response.body().string();
                 long duration = System.currentTimeMillis() - start;
                 urlTimer.getValue().update(duration, TimeUnit.MILLISECONDS);
-                logger.trace("[{}ms] {}: {}", duration, prefix, urlTimer.getKey());
+                logger.trace("[{}] {}: {}", TestUtils.timeTaken(duration), prefix, urlTimer.getKey());
                 response.close();
             } catch (IOException ex) {
                 logger.error("Exception,", ex);
@@ -162,6 +162,10 @@ public class JaegerQueryRunnable implements Closeable, Runnable {
 
     @Override
     public void run() {
+        if (config.isPerformanceTestQuickRunEnabled()) {
+            logger.info("Running query in multiple intervals only applicable for long run test");
+            return;
+        }
         logger.debug("Query run in multiple intervals triggered. Startes after {} seconds"
                 + " and total iterations:{}, interval:{} sec",
                 config.getQueryInterval(), numberOfExecution, config.getQueryInterval());

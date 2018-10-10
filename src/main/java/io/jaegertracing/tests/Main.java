@@ -85,11 +85,20 @@ public class Main {
             }
         }
 
-        expectedSpansCount = config.getTracersCount() * config.getSpansCount() * config.getTestDuration();
+        if (config.isPerformanceTestLongRunEnabled()) {
+            expectedSpansCount = config.getTracersCount() * config.getSpansCount()
+                    * config.getPerformanceTestDuration();
+        } else {
+            expectedSpansCount = config.getTracersCount() * config.getSpansCount();
+        }
     }
 
     public void execute() throws Exception {
-        triggerCreateSpans();
+        if (config.isPerformanceTestEnabled()) {
+            triggerCreateSpans();
+        } else {
+            logger.info("Performance test disabled.");
+        }
         executeSmokeTests();
 
         logger.info("[DROP_COUNT={}]", ReportFactory.getDroupCount());
@@ -107,7 +116,7 @@ public class Main {
 
     private void executeSmokeTests() {
         // execute smoke tests, if enabled
-        if (config.getRunSmokeTest()) {
+        if (config.isSmokeTestEnabled()) {
             logger.info("Execute Smoke tests enabled. Triggering smoke tests");
             JUnitCore jUnitCore = new JUnitCore();
             Result testResult = jUnitCore.run(TestSuiteSmoke.class);
@@ -166,6 +175,13 @@ public class Main {
     private void triggerCreateSpans() throws Exception {
         logger.debug("{}", config);
         Timer reportingTimer = ReportFactory.timer("report-spans");
+
+        if (config.isPerformanceTestEnabled() && config.isPerformanceTestQuickRunEnabled()) {
+            int spansPerSecond = ReportFactory.getSpansPerSecond(config);
+            int timeTakenExpectedInSeconds = (config.getTracersCount() * config.getSpansCount()) / spansPerSecond;
+            logger.info("Performancte 'qucik' run test estimations [spans/second:{}, total duration:{}]",
+                    spansPerSecond, TestUtils.timeTaken(timeTakenExpectedInSeconds * 1000L));
+        }
         long startTime = System.currentTimeMillis();
         // + 1, for query interval execution
         ExecutorService executor = Executors.newFixedThreadPool(config.getTracersCount() + 1);
@@ -178,8 +194,8 @@ public class Main {
             Runnable worker = new CreateSpansRunnable(tracer, name, config, true);
             futures.add(executor.submit(worker));
         }
-        // add a worker for query execution time
-        if (config.getQueryInterval() != -1) {
+        // add a worker for query execution time, in long run performance mode
+        if (config.isPerformanceTestLongRunEnabled() && config.getQueryInterval() != -1) {
             Runnable queryWorker = new JaegerQueryRunnable(config, new ArrayList<>(serviceNames).get(0),
                     TRACER_PREFIX + 1,
                     Arrays.asList(getNonseseTags(), getTags()));
@@ -190,12 +206,13 @@ public class Main {
             future.get();
         }
         executor.shutdownNow();
-        executor.awaitTermination(1, TimeUnit.SECONDS);
+        executor.awaitTermination(3, TimeUnit.SECONDS);
 
         long endTime = System.currentTimeMillis();
         long duration = endTime - startTime;
         reportingTimer.update(duration, TimeUnit.MILLISECONDS);
-        logger.info("Finished sending spans to jaeger service. Spans sent:{}, timetaken:{}",
+        logger.info("Finished sending spans to jaeger-{}. Spans sent:{}, timetaken:{}",
+                config.getSender().equalsIgnoreCase("http") ? "collector(http)" : "agent(udp)",
                 config.getTracersCount() * config.getSpansCount(), TimeUnit.MILLISECONDS.toSeconds(duration));
         ISpanCounter spanCounter = getSpanCounter(serviceNames);
         startTime = System.currentTimeMillis();
@@ -209,8 +226,7 @@ public class Main {
                 new ArrayList<>(serviceNames).get(0), TRACER_PREFIX + 1, Arrays.asList(getNonseseTags(), getTags()));
         jaegerQuery.execute("FINAL_");
 
-        if (config.getSpansCountFrom().equalsIgnoreCase("storage")
-                && config.getStorageType().equalsIgnoreCase("elasticsearch")) {
+        if (config.getStorageType().equalsIgnoreCase("elasticsearch")) {
             ElasticsearchStatsGetter esStatsGetter = new ElasticsearchStatsGetter(
                     config.getStorageHost(), config.getStoragePort());
             esStatsGetter.printStats();

@@ -5,7 +5,8 @@ cp openshift/templates/performance-test-in-openshift.yml performance-test-in-ope
 
 # update environment variables
 sed -i 's;${RUNNING_ON_OPENSHIFT};'${RUNNING_ON_OPENSHIFT}';g' performance-test-in-openshift.yml
-sed -i 's;${TEST_DURATION};'${TEST_DURATION}';g' performance-test-in-openshift.yml
+sed -i 's;${TESTS_TO_RUN};'${TESTS_TO_RUN}';g' performance-test-in-openshift.yml
+sed -i 's;${PERFORMANCE_TEST_DATA};'${PERFORMANCE_TEST_DATA}';g' performance-test-in-openshift.yml
 sed -i 's;${NUMBER_OF_TRACERS};'${NUMBER_OF_TRACERS}';g' performance-test-in-openshift.yml
 sed -i 's;${NUMBER_OF_SPANS};'${NUMBER_OF_SPANS}';g' performance-test-in-openshift.yml
 sed -i 's;${QUERY_LIMIT};'${QUERY_LIMIT}';g' performance-test-in-openshift.yml
@@ -41,10 +42,8 @@ sed -i 's;${JAEGER_QUERY_IMAGE};'${JAEGER_QUERY_IMAGE}';g' performance-test-in-o
 sed -i 's;${STORAGE_IMAGE};'${STORAGE_IMAGE}';g' performance-test-in-openshift.yml
 sed -i 's;${STORAGE_IMAGE_INSECURE};'${STORAGE_IMAGE_INSECURE}';g' performance-test-in-openshift.yml
 sed -i 's;${PERFORMANCE_TEST_IMAGE};'${PERFORMANCE_TEST_IMAGE}';g' performance-test-in-openshift.yml
-sed -i 's;${RUN_SMOKE_TEST};'${RUN_SMOKE_TEST}';g' performance-test-in-openshift.yml
 sed -i 's;${JAEGER_AGENT_QUEUE_SIZE};'${JAEGER_AGENT_QUEUE_SIZE}';g' performance-test-in-openshift.yml
 sed -i 's;${JAEGER_AGENT_WORKERS};'${JAEGER_AGENT_WORKERS}';g' performance-test-in-openshift.yml
-
 
 # deploy jaeger performance test
 oc create -n ${OS_NAMESPACE} -f performance-test-in-openshift.yml

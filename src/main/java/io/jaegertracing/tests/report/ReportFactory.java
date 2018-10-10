@@ -75,13 +75,29 @@ public class ReportFactory {
 
         long dropped_count = getDroupCount();
         double dropped_percentage = getDroupPercentage();
-        final int spansPersecond = config.getTracersCount() * config.getSpansCount();
 
         TEST_REPORT.getSpansCountStatistics().put("dropped_count", dropped_count);
         TEST_REPORT.getSpansCountStatistics().put("dropped_percentage",
                 dropped_percentage < 0 ? 0 : dropped_percentage);
+
+        final int spansPersecond = getSpansPerSecond(config);
         TEST_REPORT.getSpansCountStatistics().put("per_second", spansPersecond);
-        TEST_REPORT.getSpansCountStatistics().put("per_minute", spansPersecond * 60);
+        TEST_REPORT.getSpansCountStatistics().put("per_minute", spansPersecond != -1 ? spansPersecond * 60 : -1);
+    }
+
+    public static int getSpansPerSecond(TestConfig config) {
+        final int spansPersecond;
+        if (config.isPerformanceTestLongRunEnabled()) {
+            spansPersecond = config.getTracersCount() * config.getSpansCount();
+        } else {
+            if (config.getPerformanceTestSpanDelay() > 0) {
+                spansPersecond = Double.valueOf(
+                        ((1000.0 / config.getPerformanceTestSpanDelay()) * config.getTracersCount())).intValue();
+            } else {
+                spansPersecond = -1;
+            }
+        }
+        return spansPersecond;
     }
 
     public static void updateSpansCount(long sent, long found) {

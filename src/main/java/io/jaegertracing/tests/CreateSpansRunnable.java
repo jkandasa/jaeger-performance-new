@@ -23,25 +23,30 @@ public class CreateSpansRunnable implements Runnable {
         private long delay = 0;
 
         public SpansTimer() {
-            // actual is 1000 ms, modify maximum available duration based on spans count.
-            // change it to microsecond
-            int maxDuration = 700;
-            if (config.getSpansCount() < 200) {
-                maxDuration = 700;
-            } else if (config.getSpansCount() < 500) {
-                maxDuration = 500;
-            } else {
-                maxDuration = 100;
-            }
+            if (config.isPerformanceTestLongRunEnabled()) {
+                // actual is 1000 ms, modify maximum available duration based on spans count.
+                // change it to microsecond
+                int maxDuration = 700;
+                if (config.getSpansCount() < 200) {
+                    maxDuration = 700;
+                } else if (config.getSpansCount() < 500) {
+                    maxDuration = 500;
+                } else {
+                    maxDuration = 100;
+                }
 
-            delay = (maxDuration * 1000L) / config.getSpansCount();
-            logger.debug("Maximun execution time per round:{}ms, delay between spans:{}us, spans count:{}",
-                    maxDuration, delay, config.getSpansCount());
+                delay = (maxDuration * 1000L) / config.getSpansCount();
+                logger.debug("Maximun execution time per round:{}ms, delay between spans:{}us, spans count:{}",
+                        maxDuration, delay, config.getSpansCount());
+            } else {
+                delay = config.getPerformanceTestSpanDelay() * 1000L; // delay in microseconds
+            }
         }
 
         @Override
         public void run() {
-            if (executedCount.get() >= config.getTestDuration()) {
+            if (config.isPerformanceTestLongRunEnabled()
+                    && executedCount.get() >= config.getPerformanceTestDuration()) {
                 return;
             }
             Map<String, Object> logs = new HashMap<>();
@@ -68,10 +73,15 @@ public class CreateSpansRunnable implements Runnable {
                     logger.error("exception, ", ex);
                 }
             } while (count < config.getSpansCount());
-            executedCount.incrementAndGet();
-            if (executedCount.get() % 60 == 0 || executedCount.get() == 1) { // print every 1 minute once
-                logger.debug("Round number:{}, duration:{}ms, Tracer:{}",
-                        executedCount.get(), System.currentTimeMillis() - startTime, name);
+            if (config.isPerformanceTestLongRunEnabled()) {
+                executedCount.incrementAndGet();
+                if (executedCount.get() % 60 == 0 || executedCount.get() == 1) { // print every 1 minute once
+                    logger.debug("Round number:{}, duration:{}ms, Tracer:{}",
+                            executedCount.get(), System.currentTimeMillis() - startTime, name);
+                }
+            } else {
+                logger.debug("Reporting spans done, duration:{}, Tracer:{}",
+                        TestUtils.timeTaken(System.currentTimeMillis() - startTime), name);
             }
         }
 
@@ -90,26 +100,34 @@ public class CreateSpansRunnable implements Runnable {
         this.name = name;
         this.config = config;
         this.close = close;
-        this.expectedCount = config.getTestDuration();
+        if (config.isPerformanceTestLongRunEnabled()) {
+            this.expectedCount = config.getPerformanceTestDuration();
+        } else {
+            this.expectedCount = 0;
+        }
     }
 
     @Override
     public void run() {
-        logger.debug("Starting " + name);
+        logger.debug("Sending spans triggered for the tracer: {}", name);
 
-        Timer timer = new Timer();
-        timer.scheduleAtFixedRate(new SpansTimer(), 0L, 1000L);
-
-        try {
-            while (executedCount.get() < expectedCount) {
-                TimeUnit.MILLISECONDS.sleep(500L);
+        if (config.isPerformanceTestQuickRunEnabled()) {
+            SpansTimer spansTimer = new SpansTimer();
+            spansTimer.run();
+        } else {
+            Timer timer = new Timer();
+            timer.scheduleAtFixedRate(new SpansTimer(), 0L, 1000L);
+            try {
+                while (executedCount.get() < expectedCount) {
+                    TimeUnit.MILLISECONDS.sleep(500L);
+                }
+                // sleep 1 second to avoid breaking last run of sending spans
+                TimeUnit.SECONDS.sleep(1);
+                timer.cancel();
+                logger.debug("Number of rounds[executed:{}, actual:{}]", executedCount.get(), expectedCount);
+            } catch (Exception ex) {
+                logger.error("Exception,", ex);
             }
-            // sleep 1 second to avoid breaking last run of sending spans
-            TimeUnit.SECONDS.sleep(1);
-            timer.cancel();
-            logger.debug("Number of rounds[executed:{}, actual:{}]", executedCount.get(), expectedCount);
-        } catch (Exception ex) {
-            logger.error("Exception,", ex);
         }
 
         if (close) {

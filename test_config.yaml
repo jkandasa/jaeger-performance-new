@@ -3,14 +3,20 @@
 # also used on OpenShift/Kubernetes environment to install
 # Jaeger services and database in Jenkins environment
 
-# test duration in seconds
-testDuration: 60
+# what are all the tests need to be executed
+testsToRun: 'performance,smoke'
+
+# performance test data, two type of performance test can be executed
+# data format: [type,data]
+# 1. quick run example, 'quick,50', data: delay between spans in milliseconds
+# 2. long run example, 'long,600', data: test duration in seconds
+performanceTestData: 'quick,165'
 
 # tracers count, number of tracers shold send spans
-tracersCount: 5
+tracersCount: 100
 
 # spans count for per tracer.
-spansCount: 10
+spansCount: 4000
 
 # Is your test is running on OpenShift environment?
 # if you run your test on OpenShift environment, you should use Jenkins
@@ -22,7 +28,6 @@ queryLimit: 20000
 # Number of times the query to be executed repetitively.
 # To get average time
 querySamples: 5
-
 
 # How long once repeat the query test? '-1' indicates only at final
 # values in seconds
@@ -64,7 +69,6 @@ jaegerAgentPort: 6831
 # jaeger client java library configurations
 jaegerFlushInterval: 100
 jaegerMaxPocketSize: 0
-jaegerSamplingRate: 1.0
 jaegerMaxQueueSize: 10000
 
 # if the test is running on OpenShift environment,
@@ -104,6 +108,3 @@ storageImageInSecure: false
 # docker image details for performance test,
 # this image includes: smoketest as well
 imagePerformanceTest: 
-
-# do you want to execute smoke test?
-runSmokeTest: true

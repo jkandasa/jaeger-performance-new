@@ -42,8 +42,10 @@ items:
             value: "${RUNNING_ON_OPENSHIFT}"
           - name: LOGS_DIRECTORY
             value: "${LOGS_DIRECTORY}"
-          - name: TEST_DURATION
-            value: "${TEST_DURATION}"
+          - name: TESTS_TO_RUN
+            value: "${TESTS_TO_RUN}"
+          - name: PERFORMANCE_TEST_DATA
+            value: "${PERFORMANCE_TEST_DATA}"
           - name: NUMBER_OF_TRACERS
             value: "${NUMBER_OF_TRACERS}"
           - name: NUMBER_OF_SPANS

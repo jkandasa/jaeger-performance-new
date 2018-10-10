@@ -6,6 +6,7 @@ import java.io.IOException;
 import org.apache.commons.io.FileUtils;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 
@@ -14,7 +15,8 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class JsonUtils {
     private static final String ENCODING = "UTF-8";
-    private static final ObjectMapper MAPPER = new ObjectMapper();
+    private static final ObjectMapper MAPPER = new ObjectMapper()
+            .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
     public static String asString(Object data) {
         MAPPER.configure(SerializationFeature.INDENT_OUTPUT, true);
@@ -54,6 +56,7 @@ public class JsonUtils {
 
     public static Object loadFromString(String content, Class<?> clazz) {
         try {
+            MAPPER.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
             return MAPPER.readValue(content, clazz);
         } catch (IOException ex) {
             logger.error("Exception when loading [{}]", content, ex);
