@@ -175,10 +175,10 @@ pipeline {
                     if [ ${_TEST_DATA[0]} == 'long' ];then
                         _TEST_DURATION=${_TEST_DATA[1]}
                     else
-                        # if it is a qucik run define duration as 20 minutes maximum
-                        _TEST_DURATION=1200
+                        # if it is a qucik run define duration as 30 minutes maximum
+                        _TEST_DURATION=1800
                     fi
-                    ./openshift/scripts/wait_for_pods_status.sh ${OS_NAMESPACE} "app=jaeger-performance-test-job" "Running" `expr ${_TEST_DURATION} + 300`
+                    ./openshift/scripts/wait_for_pods_status.sh ${OS_NAMESPACE} "app=jaeger-performance-test-job" "Running" `expr ${_TEST_DURATION} + 1800`
                     # copy log files
                     ./openshift/scripts/copy-log-file.sh  ${OS_NAMESPACE} "app=jaeger-performance-test-job" "jaeger-performance-test"
                     ./openshift/scripts/copy-log-file.sh  ${OS_NAMESPACE} "app=jaeger-performance-test-job" "jaeger-agent"
